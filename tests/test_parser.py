@@ -1,4 +1,7 @@
+from io import BytesIO
+
 import pytest
+from docx import Document
 
 from xassemble.parser import QuestionnaireError, parse_questionnaire
 
@@ -10,6 +13,24 @@ def test_parses_questionnaire_tables() -> None:
     assert schema.variables == {"client_name", "urgent", "reason"}
     assert schema.questions[2].skip_if == "urgent == false"
     assert schema.outputs[0].label == "letter"
+    assert schema.questions[0].commentary == ""
+
+
+def test_question_text_paragraphs_after_the_first_become_commentary() -> None:
+    content = questionnaire_docx()
+    document = Document(BytesIO(content))
+    table = document.tables[0]
+    cell = table.rows[1].cells[1]
+    cell.text = "Client name"
+    cell.add_paragraph("Use the full legal name.")
+    cell.add_paragraph("Include any trading name too.")
+    destination = BytesIO()
+    document.save(destination)
+
+    schema = parse_questionnaire(destination.getvalue())
+    question = next(q for q in schema.questions if q.variable_name == "client_name")
+    assert question.question_text == "Client name"
+    assert question.commentary == "Use the full legal name.\nInclude any trading name too."
 
 
 def test_choice_must_have_options() -> None:

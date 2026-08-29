@@ -68,6 +68,8 @@ a { color: inherit; text-decoration: none; }
 .button.primary:hover { background: #274b35; }
 .button.secondary { color: #254b34; background: #e3e9e2; border-color: #cbd7cd; }
 .button.quiet { color: #3f4d45; background: transparent; border-color: #ccd2cc; }
+.button.danger { color: #7a2a1f; background: #f7e6e2; border-color: #e3b7ac; }
+.button.danger:hover { background: #f1d3ca; }
 .button.small { min-height: 2rem; padding: .4rem .6rem; font-size: .72rem; }
 .button.disabled { opacity: .45; pointer-events: none; }
 .button:disabled { opacity: .55; cursor: wait; transform: none; }
@@ -112,11 +114,13 @@ a { color: inherit; text-decoration: none; }
 .question-card { padding: 1.35rem; display: grid; grid-template-columns: 2.2rem minmax(0,1fr); gap: 1rem; background: rgba(255,255,255,.68); border: 1px solid #dedfd9; border-radius: .58rem; }
 .question-number { padding-top: .1rem; color: #a0a69f; font-family: Georgia, serif; font-size: .78rem; }
 .question-label { display: block; margin: 0 0 .8rem; color: #233129; font-family: Georgia, serif; font-size: 1.15rem; line-height: 1.35; }
+.question-commentary { margin: -.5rem 0 .8rem; color: #657168; font-size: .78rem; line-height: 1.5; white-space: pre-wrap; }
 .question-body textarea { resize: vertical; }
 .yesno-group { display: grid; grid-template-columns: repeat(2, minmax(0, 8rem)); gap: .5rem; }
 .yesno-group button { min-height: 2.7rem; display: flex; justify-content: center; align-items: center; gap: .4rem; color: #435047; background: #fff; border: 1px solid #ccd2cc; border-radius: .4rem; cursor: pointer; }
 .yesno-group button.selected { color: #28513a; background: #e3ece4; border-color: #7fa089; font-weight: 750; }
-.example-button { margin-top: .62rem; padding: 0; display: flex; align-items: center; gap: .35rem; color: #8a6633; background: none; border: 0; font-size: .72rem; cursor: pointer; text-align: left; }
+.example-buttons { margin-top: .62rem; display: flex; flex-direction: column; gap: .3rem; }
+.example-button { padding: 0; display: flex; align-items: center; gap: .35rem; color: #8a6633; background: none; border: 0; font-size: .72rem; cursor: pointer; text-align: left; }
 .generation-panel { position: sticky; top: 2rem; padding: 1.35rem; background: #fcfaf5; border: 1px solid #d8dad4; border-radius: .6rem; box-shadow: 0 .8rem 2rem rgba(28,40,33,.05); }
 .progress-copy { display: flex; justify-content: space-between; color: #3c4941; font-size: .75rem; }
 .progress-copy strong { color: #315c41; }

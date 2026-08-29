@@ -175,6 +175,13 @@ class Database:
             row = connection.execute("SELECT * FROM document_sets WHERE slug = ?", (slug,)).fetchone()
         return dict(row) if row else None
 
+    def delete_document_set(self, document_set_id: int) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "DELETE FROM generation_log WHERE document_set_id = ?", (document_set_id,)
+            )
+            connection.execute("DELETE FROM document_sets WHERE id = ?", (document_set_id,))
+
     def add_questionnaire(
         self,
         document_set_id: int,

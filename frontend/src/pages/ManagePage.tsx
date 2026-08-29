@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, Download, Files, FileText, RotateCcw, Upload } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, CheckCircle2, Download, Files, FileText, RotateCcw, Trash2, Upload, X } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api";
 import { ErrorMessage, Loading } from "../components/Feedback";
@@ -10,10 +10,12 @@ type VersionKind = "questionnaire" | "template";
 
 export function ManagePage() {
   const { slug = "" } = useParams();
+  const navigate = useNavigate();
   const [history, setHistory] = useState<VersionHistory | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function load() {
     try { setHistory(await api<VersionHistory>(`/document-sets/${slug}/versions`)); setError(""); }
@@ -44,12 +46,21 @@ export function ManagePage() {
     finally { setBusy(false); }
   }
 
+  async function deleteSet() {
+    setBusy(true); setError("");
+    try {
+      await api(`/document-sets/${slug}`, { method: "DELETE" });
+      navigate("/");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not delete this document set."); setDeleting(false); }
+    finally { setBusy(false); }
+  }
+
   if (!history && !error) return <div className="page-frame"><Loading label="Loading version history" /></div>;
   const groupedTemplates = groupTemplates(history?.templates ?? []);
   return (
     <div className="page-frame manage-frame">
       <Link className="back-link" to="/"><ArrowLeft size={15} /> All document sets</Link>
-      <header className="page-heading"><div><p className="eyebrow">Document set administration</p><h1>{humanize(slug)}</h1><p>Upload validated source files, publish changes, or restore an earlier version.</p></div></header>
+      <header className="page-heading"><div><p className="eyebrow">Document set administration</p><h1>{humanize(slug)}</h1><p>Upload validated source files, publish changes, or restore an earlier version.</p></div><button className="button danger" onClick={() => setDeleting(true)}><Trash2 size={16} /> Delete set</button></header>
       {error && <ErrorMessage message={error} />}
       {notice && <div className="success-banner" role="status"><CheckCircle2 size={18} />{notice}</div>}
       <section className="manage-grid">
@@ -66,9 +77,31 @@ export function ManagePage() {
           ))}
         </div>
       </section>
+      {deleting && <DeleteSetDialog slug={slug} busy={busy} onCancel={() => setDeleting(false)} onConfirm={() => void deleteSet()} />}
     </div>
   );
 }
+
+function DeleteSetDialog({ slug, busy, onCancel, onConfirm }: { slug: string; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
+  const [confirmation, setConfirmation] = useState("");
+  return (
+    <div className="dialog-scrim" role="presentation">
+      <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="delete-set-title">
+        <button className="icon-button dialog-close" aria-label="Close" onClick={onCancel}><X size={20} /></button>
+        <p className="eyebrow">Delete document set</p>
+        <h2 id="delete-set-title">Are you sure?</h2>
+        <p className="dialog-intro">This permanently deletes <strong>{humanize(slug)}</strong>, all of its questionnaire and template versions, and its generation history. This cannot be undone.</p>
+        <label htmlFor="delete-confirmation">Type <strong>{slug}</strong> to confirm</label>
+        <input id="delete-confirmation" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoFocus />
+        <div className="dialog-actions">
+          <button type="button" className="button quiet" onClick={onCancel}>Cancel</button>
+          <button type="button" className="button danger" disabled={busy || confirmation !== slug} onClick={onConfirm}>{busy ? "Deleting…" : "Delete permanently"}</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 
 function SourceHeader({ icon, title, description, downloadUrl }: { icon: React.ReactNode; title: string; description: string; downloadUrl?: string }) {
   return <header className="source-header"><span>{icon}</span><div><h2>{title}</h2><p>{description}</p></div>{downloadUrl && <a className="button quiet" href={downloadUrl}><Download size={15} /> Current</a>}</header>;

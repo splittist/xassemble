@@ -153,6 +153,11 @@ def create_app(
         except sqlite3.IntegrityError as exc:
             raise HTTPException(409, "A document set with that slug already exists") from exc
 
+    @app.delete("/document-sets/{slug}", status_code=204)
+    def delete_document_set(slug: str) -> None:
+        document_set = _document_set(database, slug)
+        database.delete_document_set(document_set["id"])
+
     @app.post("/document-sets/{slug}/questionnaire-versions", status_code=201)
     async def upload_questionnaire(
         slug: str,

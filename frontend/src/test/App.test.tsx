@@ -55,8 +55,8 @@ describe("questionnaire runner", () => {
       const path = String(input);
       if (path.endsWith("/questionnaire")) {
         return jsonResponse({ version_id: 1, questions: [
-          { variable_name: "urgent", question_text: "Is this urgent?", type: "yesno", options: [], example: "", skip_if: "", section: "Matter" },
-          { variable_name: "reason", question_text: "Why is it urgent?", type: "textarea", options: [], example: "", skip_if: "urgent == false", section: "Matter" }
+          { variable_name: "urgent", question_text: "Is this urgent?", type: "yesno", options: [], examples: [], commentary: "", skip_if: "", section: "Matter" },
+          { variable_name: "reason", question_text: "Why is it urgent?", type: "textarea", options: [], examples: [], commentary: "", skip_if: "urgent == false", section: "Matter" }
         ] });
       }
       if (path.endsWith("/questionnaire/evaluate")) {

@@ -98,7 +98,10 @@ def _normalize(value: str) -> str:
 
 def _parse_question(row: dict[str, str], row_number: int) -> Question:
     variable = row.get("variable_name", "").strip()
-    text = row.get("question_text", "").strip()
+    raw_text = row.get("question_text", "").strip()
+    text, _, commentary = raw_text.partition("\n")
+    text = text.strip()
+    commentary = commentary.strip()
     question_type = row.get("type", "").strip().lower()
     if not IDENTIFIER.fullmatch(variable):
         raise QuestionnaireError(f"Questions row {row_number}: invalid variable_name '{variable}'")
@@ -117,12 +120,18 @@ def _parse_question(row: dict[str, str], row_number: int) -> Question:
     )
     if question_type == "choice" and not options:
         raise QuestionnaireError(f"Questions row {row_number}: choice requires options")
+    examples = tuple(
+        example.strip()
+        for example in re.split(r"[|\n]", row.get("example", ""))
+        if example.strip()
+    )
     return Question(
         variable_name=variable,
         question_text=text,
         type=question_type,  # type: ignore[arg-type]
         options=options,
-        example=row.get("example", "").strip(),
+        examples=examples,
+        commentary=commentary,
         skip_if=row.get("skip_if", "").strip(),
         section=row.get("section", "").strip(),
     )

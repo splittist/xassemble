@@ -108,3 +108,26 @@ def test_questionnaire_update_is_blocked_if_it_breaks_current_template(tmp_path)
         )
         assert rejected.status_code == 422
         assert "client_name" in rejected.json()["detail"]
+
+
+def test_delete_document_set_removes_it_and_its_versions(tmp_path) -> None:
+    app, _ = authenticated_app(tmp_path / "test.sqlite3")
+    with TestClient(app) as client:
+        log_in(client)
+        client.post("/document-sets", json={"slug": "letters", "name": "Letters"})
+        upload = client.post(
+            "/document-sets/letters/questionnaire-versions",
+            files={"file": ("q.docx", questionnaire_docx(), DOCX_MEDIA_TYPE)},
+            data={},
+        )
+        client.post(
+            f"/document-sets/letters/questionnaire-versions/{upload.json()['id']}/publish"
+        )
+
+        deleted = client.delete("/document-sets/letters")
+        assert deleted.status_code == 204
+
+        assert client.get("/document-sets").json() == []
+        assert client.get("/document-sets/letters/versions").status_code == 404
+        assert client.delete("/document-sets/letters").status_code == 404
+

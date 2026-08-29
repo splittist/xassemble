@@ -162,10 +162,10 @@ Authored as a Word document containing two tables:
 | Column | Purpose |
 |---|---|
 | `variable_name` | valid Jinja2 identifier |
-| `question_text` | shown to the user |
+| `question_text` | shown to the user; paragraphs after the first are shown as smaller commentary |
 | `type` | `yesno` \| `choice` \| `text` \| `textarea` |
 | `options` | for `choice`, pipe- or newline-separated |
-| `example` | sample answer, shown as cut-paste-and-edit content |
+| `example` | sample answer(s), pipe- or newline-separated, shown as cut-paste-and-edit content |
 | `skip_if` | condition referencing earlier variables (§8) |
 | `section` | optional grouping/heading |
 

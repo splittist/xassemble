@@ -89,10 +89,10 @@ Questions table:
 | Column | Content |
 | --- | --- |
 | `variable_name` | A unique identifier such as `client_name` |
-| `question_text` | Text shown to the user |
+| `question_text` | Text shown to the user. Any paragraph after the first is shown as smaller commentary text |
 | `type` | `yesno`, `choice`, `text`, or `textarea` |
 | `options` | Pipe- or newline-separated values for a choice |
-| `example` | Optional sample answer |
+| `example` | Optional sample answer(s), pipe- or newline-separated for multiple choosable examples |
 | `skip_if` | Optional condition using earlier questions only |
 | `section` | Optional section heading |
 

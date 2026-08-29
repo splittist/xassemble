@@ -69,8 +69,15 @@ export function QuestionnairePage() {
                   <div className="question-number">{String(index + 1).padStart(2, "0")}</div>
                   <div className="question-body">
                     <div className="question-label" id={`q-${question.variable_name}-label`}>{question.question_text}</div>
+                    {question.commentary && <p className="question-commentary">{question.commentary}</p>}
                     <QuestionInput question={question} value={answers[question.variable_name]} onChange={(value) => answer(question, value)} />
-                    {question.example && <button type="button" className="example-button" onClick={() => answer(question, question.example)}><Sparkles size={14} /> Use example: “{question.example}”</button>}
+                    {question.examples.length > 0 && (
+                      <div className="example-buttons">
+                        {question.examples.map((example, exampleIndex) => (
+                          <button key={exampleIndex} type="button" className="example-button" onClick={() => answer(question, example)}><Sparkles size={14} /> Use example: “{example}”</button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </article>
               </div>

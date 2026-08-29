@@ -21,7 +21,8 @@ export interface Question {
   question_text: string;
   type: "yesno" | "choice" | "text" | "textarea";
   options: string[];
-  example: string;
+  examples: string[];
+  commentary: string;
   skip_if: string;
   section: string;
 }

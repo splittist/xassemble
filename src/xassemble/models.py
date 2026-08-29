@@ -12,13 +12,15 @@ class Question:
     question_text: str
     type: QuestionType
     options: tuple[str, ...] = field(default_factory=tuple)
-    example: str = ""
+    examples: tuple[str, ...] = field(default_factory=tuple)
+    commentary: str = ""
     skip_if: str = ""
     section: str = ""
 
     def to_dict(self) -> dict[str, object]:
         value = asdict(self)
         value["options"] = list(self.options)
+        value["examples"] = list(self.examples)
         return value
 
 
@@ -50,9 +52,20 @@ class QuestionnaireSchema:
     @classmethod
     def from_dict(cls, value: dict[str, object]) -> QuestionnaireSchema:
         questions = tuple(
-            Question(**{**item, "options": tuple(item.get("options", []))})
-            for item in value.get("questions", [])
+            Question(**_question_kwargs(item)) for item in value.get("questions", [])
         )
         outputs = tuple(OutputDocument(**item) for item in value.get("outputs", []))
         return cls(questions=questions, outputs=outputs)
+
+
+def _question_kwargs(item: dict[str, object]) -> dict[str, object]:
+    kwargs = dict(item)
+    kwargs["options"] = tuple(kwargs.get("options", []))
+    # older cached schemas stored a single "example" string instead of "examples"
+    legacy_example = kwargs.pop("example", None)
+    examples = kwargs.get("examples")
+    if examples is None:
+        examples = (legacy_example,) if legacy_example else ()
+    kwargs["examples"] = tuple(examples)
+    return kwargs
 
