@@ -1,0 +1,36 @@
+services:
+  xassemble:
+    build:
+      context: .
+    environment:
+      XASSEMBLE_DB: /data/xassemble.sqlite3
+      XASSEMBLE_SECRET_KEY: ${XASSEMBLE_SECRET_KEY:?Set XASSEMBLE_SECRET_KEY in .env}
+      XASSEMBLE_SECURE_COOKIES: "true"
+      XASSEMBLE_SESSION_SECONDS: ${XASSEMBLE_SESSION_SECONDS:-28800}
+    volumes:
+      - xassemble-data:/data
+    restart: unless-stopped
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2.10-alpine
+    environment:
+      XASSEMBLE_HOST: ${XASSEMBLE_HOST:-localhost}
+    depends_on:
+      xassemble:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+volumes:
+  xassemble-data:
+  caddy-data:
+  caddy-config:

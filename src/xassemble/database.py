@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
+import uuid
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -74,6 +76,14 @@ CREATE TABLE IF NOT EXISTS generation_log (
 );
 """
 
+REQUIRED_TABLES = {
+    "users",
+    "document_sets",
+    "questionnaire_versions",
+    "template_versions",
+    "generation_log",
+}
+
 
 class Database:
     def __init__(self, path: str | Path):
@@ -83,6 +93,59 @@ class Database:
         Path(self.path).parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as connection:
             connection.executescript(SCHEMA)
+
+    def is_healthy(self) -> bool:
+        try:
+            with self.connect() as connection:
+                row = connection.execute("PRAGMA quick_check(1)").fetchone()
+                tables = _database_tables(connection)
+            return row is not None and row[0] == "ok" and REQUIRED_TABLES <= tables
+        except (OSError, sqlite3.Error):
+            return False
+
+    def verify(self) -> None:
+        _validate_database_file(Path(self.path))
+
+    def backup(self, destination: str | Path) -> Path:
+        destination_path = Path(destination)
+        if destination_path.resolve() == Path(self.path).resolve():
+            raise ValueError("Backup destination must differ from the database path")
+        destination_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = destination_path.with_name(
+            f".{destination_path.name}.tmp-{uuid.uuid4().hex}"
+        )
+        try:
+            with self.connect() as source, closing(sqlite3.connect(temporary_path)) as target:
+                source.backup(target)
+            _validate_database_file(temporary_path)
+            os.replace(temporary_path, destination_path)
+        finally:
+            temporary_path.unlink(missing_ok=True)
+        return destination_path
+
+    def restore(self, source: str | Path) -> Path:
+        source_path = Path(source)
+        if not source_path.is_file():
+            raise ValueError(f"Backup file not found: {source_path}")
+        if source_path.resolve() == Path(self.path).resolve():
+            raise ValueError("Restore source must differ from the database path")
+        _validate_database_file(source_path)
+        database_path = Path(self.path)
+        database_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = database_path.with_name(
+            f".{database_path.name}.restore-{uuid.uuid4().hex}"
+        )
+        try:
+            with (
+                closing(sqlite3.connect(source_path)) as backup,
+                closing(sqlite3.connect(temporary_path)) as target,
+            ):
+                backup.backup(target)
+            _validate_database_file(temporary_path)
+            os.replace(temporary_path, database_path)
+        finally:
+            temporary_path.unlink(missing_ok=True)
+        return database_path
 
     def create_user(self, name: str, username: str, password_hash: str) -> dict[str, Any]:
         with self.connect() as connection:
@@ -360,3 +423,28 @@ def load_schema(row: dict[str, Any]) -> QuestionnaireSchema:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _validate_database_file(path: Path) -> None:
+    try:
+        with closing(sqlite3.connect(path)) as connection:
+            result = connection.execute("PRAGMA integrity_check").fetchone()
+            tables = _database_tables(connection)
+    except sqlite3.Error as exc:
+        raise ValueError(f"Invalid SQLite database: {exc}") from exc
+    if result is None or result[0] != "ok":
+        detail = result[0] if result else "no result"
+        raise ValueError(f"SQLite integrity check failed: {detail}")
+    missing = REQUIRED_TABLES - tables
+    if missing:
+        missing_names = ", ".join(sorted(missing))
+        raise ValueError(f"Backup is not an xassemble database; missing tables: {missing_names}")
+
+
+def _database_tables(connection: sqlite3.Connection) -> set[str]:
+    return {
+        row[0]
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        ).fetchall()
+    }

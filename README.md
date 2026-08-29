@@ -18,7 +18,8 @@ This repository currently implements the backend foundation from `PLAN.md`:
 - a responsive React interface for login, questionnaires, downloads, uploads, publishing, and
   rollback.
 
-Production exposure should still wait for TLS/reverse-proxy and deployment configuration.
+The repository includes a non-root container, persistent Compose setup, Caddy TLS proxy, and
+verified SQLite backup/restore tooling. See [DEPLOYMENT.md](DEPLOYMENT.md) before production use.
 
 ## Run locally
 
@@ -52,6 +53,12 @@ npm run build
 npm test
 ```
 
+Build and exercise the production container on Windows with:
+
+```powershell
+.\scripts\container-smoke-test.ps1
+```
+
 For frontend development with instant updates, run the API on port 8000 and `npm run dev` from
 `frontend` in a second terminal. Vite serves the interface on port 5173 and proxies API requests
 to FastAPI. The production build is served directly by FastAPI, including browser refreshes on
@@ -78,6 +85,20 @@ change this. Set `XASSEMBLE_SECURE_COOKIES=true` whenever the app is served behi
 Every protected request verifies the cookie signature and expiry, then reloads the user from
 SQLite and checks `active`. Deactivation therefore revokes existing sessions immediately. Audit
 fields are taken from the authenticated username rather than accepted from request data.
+
+## Database operations
+
+Use the SQLite-aware commands rather than copying a live database file:
+
+```powershell
+uv run xassemble-db check
+uv run xassemble-db backup backups\xassemble.sqlite3
+uv run xassemble-db restore backups\xassemble.sqlite3 --confirm-replace
+```
+
+Backup is safe while the application is running. Stop the application before restore. The
+commands validate SQLite integrity and the expected xassemble schema. Container-specific backup,
+off-host storage, and restore instructions are in [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Questionnaire document format
 
@@ -131,8 +152,7 @@ Typical API order:
 The explicit kind is necessary because the plan uses two version tables whose numeric IDs can
 overlap.
 
-## Next sensible slice
+## Current scope
 
-Add the single-container deployment slice: a multi-stage Docker build, non-root runtime, health
-check, persistent SQLite volume, reverse-proxy example, and a documented atomic backup/restore
-process.
+The planned v1 application and single-container deployment slices are complete. Repeating groups,
+answer-key upload, SSO, multiple roles, and rich-text answers remain intentionally out of scope.

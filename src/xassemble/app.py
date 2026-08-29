@@ -110,7 +110,10 @@ def create_app(
         return await call_next(request)
 
     @app.get("/health")
-    def health() -> dict[str, str]:
+    def health(response: Response) -> dict[str, str]:
+        if not database.is_healthy():
+            response.status_code = 503
+            return {"status": "unavailable"}
         return {"status": "ok"}
 
     @app.post("/auth/login")

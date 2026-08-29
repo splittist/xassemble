@@ -6,6 +6,8 @@ __pycache__/
 .ruff_cache/
 .venv/
 data/
+backups/
+.env
 frontend/node_modules/
 frontend/dist/
 *.tsbuildinfo

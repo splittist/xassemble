@@ -18,6 +18,15 @@ def test_all_application_routes_require_a_valid_session(tmp_path) -> None:
         assert client.get("/docs").status_code == 401
 
 
+def test_health_reports_database_failure(tmp_path, monkeypatch) -> None:
+    app, _ = authenticated_app(tmp_path / "test.sqlite3")
+    monkeypatch.setattr(app.state.database, "is_healthy", lambda: False)
+    with TestClient(app) as client:
+        response = client.get("/health")
+    assert response.status_code == 503
+    assert response.json() == {"status": "unavailable"}
+
+
 def test_frontend_shell_is_available_before_login(tmp_path) -> None:
     frontend = tmp_path / "frontend"
     frontend.mkdir()

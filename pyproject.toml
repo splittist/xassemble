@@ -22,6 +22,7 @@ dependencies = [
 
 [project.scripts]
 xassemble-user = "xassemble.user_cli:main"
+xassemble-db = "xassemble.database_cli:main"
 
 [dependency-groups]
 dev = [
