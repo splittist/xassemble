@@ -25,14 +25,19 @@ class SessionManager:
         self.serializer = URLSafeTimedSerializer(secret_key, salt="xassemble-session-v1")
         self.max_age = max_age
 
-    def create(self, user_id: int) -> str:
-        return self.serializer.dumps({"user_id": user_id})
+    def create(self, user_id: int, session_version: int) -> str:
+        return self.serializer.dumps(
+            {"user_id": user_id, "session_version": session_version}
+        )
 
-    def read(self, token: str) -> int | None:
+    def read(self, token: str) -> tuple[int, int] | None:
         try:
             value = self.serializer.loads(token, max_age=self.max_age)
             user_id = value.get("user_id") if isinstance(value, dict) else None
-            return user_id if type(user_id) is int else None
+            session_version = value.get("session_version") if isinstance(value, dict) else None
+            if type(user_id) is int and type(session_version) is int:
+                return user_id, session_version
+            return None
         except (BadSignature, SignatureExpired):
             return None
 
@@ -53,8 +58,17 @@ def authenticate(database: Database, username: str, password: str) -> dict[str, 
     if not user or not valid or not user["active"]:
         return None
     if _password_hasher.check_needs_rehash(password_hash):
-        database.update_user_password(user["username"], _password_hasher.hash(password))
+        database.update_user_password(
+            user["username"], _password_hasher.hash(password), invalidate_sessions=False
+        )
     return user
+
+
+def verify_password(password_hash: str, password: str) -> bool:
+    try:
+        return _password_hasher.verify(password_hash, password)
+    except (VerifyMismatchError, VerificationError, InvalidHashError):
+        return False
 
 
 def normalize_username(username: str) -> str:
@@ -67,4 +81,11 @@ def normalize_username(username: str) -> str:
 
 
 def public_user(user: dict[str, Any]) -> dict[str, Any]:
-    return {key: user[key] for key in ("id", "name", "username", "role", "active")}
+    return {
+        "id": user["id"],
+        "name": user["name"],
+        "username": user["username"],
+        "role": user["role"],
+        "active": bool(user["active"]),
+        "must_change_password": bool(user["must_change_password"]),
+    }

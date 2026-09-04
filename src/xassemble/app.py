@@ -17,7 +17,10 @@ from .auth import (
     SESSION_COOKIE,
     SessionManager,
     authenticate,
+    hash_password,
+    normalize_username,
     public_user,
+    verify_password,
 )
 from .database import Database, load_schema
 from .parser import QuestionnaireError, parse_questionnaire
@@ -34,7 +37,15 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LABEL = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 PUBLIC_PATHS = {"/health", "/auth/login"}
-PROTECTED_PREFIXES = ("/auth", "/document-sets", "/docs", "/openapi.json")
+PROTECTED_PREFIXES = (
+    "/auth",
+    "/admin",
+    "/users",
+    "/document-sets",
+    "/docs",
+    "/openapi.json",
+)
+FORCED_PASSWORD_PATHS = {"/auth/me", "/auth/change-password", "/auth/logout"}
 
 
 class DocumentSetCreate(BaseModel):
@@ -54,6 +65,28 @@ class GenerateRequest(AnswersRequest):
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=80)
     password: str = Field(min_length=1, max_length=256)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=1, max_length=256)
+
+
+class AdminUserCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    username: str = Field(min_length=1, max_length=80)
+    temporary_password: str = Field(min_length=1, max_length=256)
+    role: Literal["member", "admin"] = "member"
+
+
+class AdminUserUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    role: Literal["member", "admin"]
+    active: bool
+
+
+class AdminPasswordReset(BaseModel):
+    temporary_password: str = Field(min_length=1, max_length=256)
 
 
 def create_app(
@@ -98,15 +131,25 @@ def create_app(
             return await call_next(request)
         token = request.cookies.get(SESSION_COOKIE)
         sessions: SessionManager = request.app.state.sessions
-        user_id = sessions.read(token) if token else None
-        user = database.get_user(user_id) if user_id is not None else None
-        if user is None or not user["active"]:
+        identity = sessions.read(token) if token else None
+        user = database.get_user(identity[0]) if identity is not None else None
+        if (
+            user is None
+            or not user["active"]
+            or identity is None
+            or user["session_version"] != identity[1]
+        ):
             return JSONResponse(
                 {"detail": "Authentication required"},
                 status_code=401,
                 headers={"WWW-Authenticate": "Session"},
             )
         request.state.user = user
+        if user["must_change_password"] and request.url.path not in FORCED_PASSWORD_PATHS:
+            return JSONResponse(
+                {"detail": "You must change your password before continuing"},
+                status_code=403,
+            )
         return await call_next(request)
 
     @app.get("/health")
@@ -126,7 +169,7 @@ def create_app(
             raise HTTPException(401, "Invalid username or password")
         response.set_cookie(
             SESSION_COOKIE,
-            app.state.sessions.create(user["id"]),
+            app.state.sessions.create(user["id"], user["session_version"]),
             max_age=session_lifetime,
             httponly=True,
             secure=cookie_secure,
@@ -142,6 +185,90 @@ def create_app(
     @app.get("/auth/me")
     def me(request: Request) -> dict[str, object]:
         return public_user(request.state.user)
+
+    @app.post("/auth/change-password")
+    def change_password(
+        payload: ChangePasswordRequest, request: Request, response: Response
+    ) -> dict[str, object]:
+        user = request.state.user
+        if not verify_password(user["password_hash"], payload.current_password):
+            raise HTTPException(400, "Current password is incorrect")
+        if payload.current_password == payload.new_password:
+            raise HTTPException(400, "New password must differ from the current password")
+        try:
+            password_hash = hash_password(payload.new_password)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        database.update_user_password(user["username"], password_hash)
+        updated = database.get_user(user["id"])
+        assert updated is not None
+        response.set_cookie(
+            SESSION_COOKIE,
+            app.state.sessions.create(updated["id"], updated["session_version"]),
+            max_age=session_lifetime,
+            httponly=True,
+            secure=cookie_secure,
+            samesite="lax",
+            path="/",
+        )
+        return public_user(updated)
+
+    @app.get("/admin/users")
+    def list_users(request: Request) -> list[dict[str, object]]:
+        _require_admin(request)
+        return [public_user(user) | {"created_at": user["created_at"]} for user in database.list_users()]
+
+    @app.post("/admin/users", status_code=201)
+    def create_user(payload: AdminUserCreate, request: Request) -> dict[str, object]:
+        _require_admin(request)
+        name = payload.name.strip()
+        if not name:
+            raise HTTPException(422, "Name is required")
+        try:
+            username = normalize_username(payload.username)
+            password_hash = hash_password(payload.temporary_password)
+            user = database.create_user(name, username, password_hash, role=payload.role)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        except sqlite3.IntegrityError as exc:
+            raise HTTPException(409, "A user with that username already exists") from exc
+        return public_user(user) | {"created_at": user["created_at"]}
+
+    @app.put("/admin/users/{user_id}")
+    def update_user(
+        user_id: int, payload: AdminUserUpdate, request: Request
+    ) -> dict[str, object]:
+        _require_admin(request)
+        name = payload.name.strip()
+        if not name:
+            raise HTTPException(422, "Name is required")
+        try:
+            user = database.update_user(
+                user_id, name=name, role=payload.role, active=payload.active
+            )
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        if user is None:
+            raise HTTPException(404, "User not found")
+        return public_user(user) | {"created_at": user["created_at"]}
+
+    @app.post("/admin/users/{user_id}/reset-password", status_code=204)
+    def reset_user_password(
+        user_id: int, payload: AdminPasswordReset, request: Request
+    ) -> None:
+        _require_admin(request)
+        if user_id == request.state.user["id"]:
+            raise HTTPException(409, "Use your account page to change your own password")
+        user = database.get_user(user_id)
+        if user is None:
+            raise HTTPException(404, "User not found")
+        try:
+            password_hash = hash_password(payload.temporary_password)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        database.update_user_password(
+            user["username"], password_hash, must_change_password=True
+        )
 
     @app.get("/document-sets")
     def list_document_sets() -> list[dict[str, object]]:
@@ -330,11 +457,18 @@ def create_app(
             app.mount("/assets", StaticFiles(directory=assets_path), name="frontend-assets")
 
         @app.get("/", include_in_schema=False)
+        @app.get("/account", include_in_schema=False)
+        @app.get("/users", include_in_schema=False)
         @app.get("/sets/{frontend_route:path}", include_in_schema=False)
         def frontend(frontend_route: str = "") -> FileResponse:
             return FileResponse(frontend_path / "index.html")
 
     return app
+
+
+def _require_admin(request: Request) -> None:
+    if request.state.user["role"] != "admin":
+        raise HTTPException(403, "Administrator access required")
 
 
 def _document_set(database: Database, slug: str) -> dict[str, object]:

@@ -20,8 +20,10 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT NOT NULL,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'member' CHECK (role = 'member'),
+    role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'admin')),
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+    must_change_password INTEGER NOT NULL DEFAULT 1 CHECK (must_change_password IN (0, 1)),
+    session_version INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL
 );
 
@@ -147,12 +149,20 @@ class Database:
             temporary_path.unlink(missing_ok=True)
         return database_path
 
-    def create_user(self, name: str, username: str, password_hash: str) -> dict[str, Any]:
+    def create_user(
+        self,
+        name: str,
+        username: str,
+        password_hash: str,
+        role: str = "member",
+        must_change_password: bool = True,
+    ) -> dict[str, Any]:
         with self.connect() as connection:
             cursor = connection.execute(
-                """INSERT INTO users(name, username, password_hash, role, active, created_at)
-                   VALUES (?, ?, ?, 'member', 1, ?)""",
-                (name, username, password_hash, _now()),
+                """INSERT INTO users
+                   (name, username, password_hash, role, active, must_change_password, created_at)
+                   VALUES (?, ?, ?, ?, 1, ?, ?)""",
+                (name, username, password_hash, role, int(must_change_password), _now()),
             )
             row = connection.execute("SELECT * FROM users WHERE id = ?", (cursor.lastrowid,)).fetchone()
         return dict(row)
@@ -172,22 +182,85 @@ class Database:
     def list_users(self) -> list[dict[str, Any]]:
         with self.connect() as connection:
             rows = connection.execute(
-                "SELECT id, name, username, role, active, created_at FROM users ORDER BY username"
+                """SELECT id, name, username, role, active, must_change_password, created_at
+                   FROM users ORDER BY username"""
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def update_user_password(self, username: str, password_hash: str) -> bool:
+    def update_user_password(
+        self,
+        username: str,
+        password_hash: str,
+        *,
+        must_change_password: bool = False,
+        invalidate_sessions: bool = True,
+    ) -> bool:
         with self.connect() as connection:
-            cursor = connection.execute(
-                "UPDATE users SET password_hash = ? WHERE username = ?",
-                (password_hash, username),
-            )
+            if invalidate_sessions:
+                cursor = connection.execute(
+                    """UPDATE users
+                       SET password_hash = ?, must_change_password = ?,
+                           session_version = session_version + 1
+                       WHERE username = ?""",
+                    (password_hash, int(must_change_password), username),
+                )
+            else:
+                cursor = connection.execute(
+                    "UPDATE users SET password_hash = ? WHERE username = ?",
+                    (password_hash, username),
+                )
         return cursor.rowcount == 1
+
+    def update_user(
+        self,
+        user_id: int,
+        *,
+        name: str,
+        role: str,
+        active: bool,
+    ) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+            if row is None:
+                return None
+            removes_active_admin = (
+                row["role"] == "admin"
+                and row["active"]
+                and (role != "admin" or not active)
+            )
+            if removes_active_admin:
+                count = connection.execute(
+                    "SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = 1"
+                ).fetchone()[0]
+                if count <= 1:
+                    raise ValueError("The final active administrator cannot be changed")
+            connection.execute(
+                """UPDATE users SET name = ?, role = ?, active = ?,
+                   session_version = session_version + CASE WHEN active = ? THEN 0 ELSE 1 END
+                   WHERE id = ?""",
+                (name, role, int(active), row["active"], user_id),
+            )
+            updated = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        return dict(updated)
 
     def set_user_active(self, username: str, active: bool) -> bool:
         with self.connect() as connection:
+            row = connection.execute(
+                "SELECT role, active FROM users WHERE username = ?", (username,)
+            ).fetchone()
+            if row is None:
+                return False
+            if row["role"] == "admin" and row["active"] and not active:
+                count = connection.execute(
+                    "SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = 1"
+                ).fetchone()[0]
+                if count <= 1:
+                    raise ValueError("The final active administrator cannot be changed")
             cursor = connection.execute(
-                "UPDATE users SET active = ? WHERE username = ?", (int(active), username)
+                """UPDATE users SET active = ?,
+                   session_version = session_version + CASE WHEN active = ? THEN 0 ELSE 1 END
+                   WHERE username = ?""",
+                (int(active), row["active"], username),
             )
         return cursor.rowcount == 1
 

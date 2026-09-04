@@ -5,6 +5,8 @@ import { api } from "./api";
 import { AppShell } from "./components/AppShell";
 import { Loading } from "./components/Feedback";
 import { DashboardPage } from "./pages/DashboardPage";
+import { AdminUsersPage } from "./pages/AdminUsersPage";
+import { ChangePasswordPage } from "./pages/ChangePasswordPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ManagePage } from "./pages/ManagePage";
 import { QuestionnairePage } from "./pages/QuestionnairePage";
@@ -27,12 +29,15 @@ export default function App() {
 
   if (user === undefined) return <div className="app-loading"><Loading label="Opening workspace" /></div>;
   if (!user) return <LoginPage onLogin={setUser} />;
+  if (user.must_change_password) return <ChangePasswordPage forced onChanged={setUser} onLogout={() => void logout()} />;
 
   return (
     <BrowserRouter>
       <AppShell user={user} onLogout={() => void logout()}>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/account" element={<ChangePasswordPage onChanged={setUser} />} />
+          <Route path="/users" element={user.role === "admin" ? <AdminUsersPage currentUser={user} /> : <Navigate to="/" replace />} />
           <Route path="/sets/:slug/assemble" element={<QuestionnairePage />} />
           <Route path="/sets/:slug/manage" element={<ManagePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

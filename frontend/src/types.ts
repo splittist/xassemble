@@ -2,8 +2,13 @@ export interface User {
   id: number;
   name: string;
   username: string;
-  role: "member";
+  role: "member" | "admin";
   active: boolean;
+  must_change_password: boolean;
+}
+
+export interface ManagedUser extends User {
+  created_at: string;
 }
 
 export interface DocumentSet {

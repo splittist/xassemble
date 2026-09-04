@@ -22,6 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
     add = commands.add_parser("add", help="Create an active user")
     add.add_argument("username")
     add.add_argument("--name", required=True)
+    add.add_argument("--admin", action="store_true", help="Create an administrator")
     reset = commands.add_parser("reset-password", help="Set a new password")
     reset.add_argument("username")
     activate = commands.add_parser("activate", help="Activate a user")
@@ -43,11 +44,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             if not name:
                 raise ValueError("Name is required")
             password_hash = hash_password(_prompt_password())
-            database.create_user(name, username, password_hash)
-            print(f"Created active user: {username}")
+            role = "admin" if arguments.admin else "member"
+            database.create_user(name, username, password_hash, role=role)
+            print(f"Created active {role}: {username}")
         elif arguments.command == "reset-password":
             username = normalize_username(arguments.username)
-            if not database.update_user_password(username, hash_password(_prompt_password())):
+            if not database.update_user_password(
+                username, hash_password(_prompt_password()), must_change_password=True
+            ):
                 raise ValueError(f"User not found: {username}")
             print(f"Password reset: {username}")
         elif arguments.command in {"activate", "deactivate"}:

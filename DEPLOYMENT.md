@@ -21,6 +21,11 @@ editor .env
 ```
 
 The secret must remain stable across restarts; changing it immediately invalidates every login.
+
+> **User-management schema upgrade:** this release intentionally has no migration for databases
+> created by an earlier version. Back up anything you need, remove the old application database,
+> deploy the new version, and create the first account with
+> `docker compose run --rm --no-deps xassemble xassemble-user add admin --name "Administrator" --admin`.
 Do not commit `.env`.
 
 Build and start the services, then create the first user interactively:

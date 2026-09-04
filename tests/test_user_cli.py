@@ -23,7 +23,7 @@ def test_user_cli_add_list_deactivate_and_reset_password(tmp_path, monkeypatch, 
         )
         == 0
     )
-    assert "Created active user: editor" in capsys.readouterr().out
+    assert "Created active member: editor" in capsys.readouterr().out
     database = Database(database_path)
     assert authenticate(database, "editor", TEST_PASSWORD) is not None
 
@@ -39,3 +39,17 @@ def test_user_cli_add_list_deactivate_and_reset_password(tmp_path, monkeypatch, 
     assert main(["--database", str(database_path), "reset-password", "editor"]) == 0
     assert authenticate(database, "editor", TEST_PASSWORD) is None
     assert authenticate(database, "editor", new_password) is not None
+
+
+def test_user_cli_can_bootstrap_an_admin(tmp_path, monkeypatch, capsys) -> None:
+    database_path = tmp_path / "test.sqlite3"
+    prompted_passwords = iter([TEST_PASSWORD, TEST_PASSWORD])
+    monkeypatch.setattr("xassemble.user_cli.getpass.getpass", lambda _: next(prompted_passwords))
+    assert main([
+        "--database", str(database_path), "add", "admin", "--name", "Administrator", "--admin"
+    ]) == 0
+    assert "Created active admin: admin" in capsys.readouterr().out
+    user = Database(database_path).get_user_by_username("admin")
+    assert user is not None
+    assert user["role"] == "admin"
+    assert user["must_change_password"] == 1

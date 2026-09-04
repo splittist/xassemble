@@ -26,11 +26,12 @@ button, input, textarea, select { font: inherit; }
 .login-panel { display: grid; place-content: center; padding: 2rem; background: #f4f1eb; }
 .login-card { width: min(25rem, calc(100vw - 3rem)); }
 .lock-badge { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: 2rem; color: #325640; background: #e2e7df; border-radius: 50%; }
-.login-card h2 { margin: 0; font-family: Georgia, serif; font-size: 2.2rem; font-weight: 500; letter-spacing: -.025em; }
+.login-card h2, .account-card-form h2 { margin: 0; font-family: Georgia, serif; font-size: 2.2rem; font-weight: 500; letter-spacing: -.025em; }
 .form-intro { margin: .7rem 0 2.2rem; color: #69736d; line-height: 1.55; }
-.login-card label { display: block; margin: 1.2rem 0 .48rem; color: #34443b; font-size: .82rem; font-weight: 700; }
-.login-card input { width: 100%; padding: .87rem .95rem; color: #17231d; background: rgba(255,255,255,.72); border: 1px solid #ccd1ca; border-radius: .45rem; outline: none; transition: border-color .15s, box-shadow .15s; }
-.login-card input:focus { border-color: #426d51; box-shadow: 0 0 0 3px rgba(66,109,81,.12); }
+.login-card label, .account-card-form label { display: block; margin: 1.2rem 0 .48rem; color: #34443b; font-size: .82rem; font-weight: 700; }
+.login-card input, .account-card-form input { width: 100%; padding: .87rem .95rem; color: #17231d; background: rgba(255,255,255,.72); border: 1px solid #ccd1ca; border-radius: .45rem; outline: none; transition: border-color .15s, box-shadow .15s; }
+.login-card input:focus, .account-card-form input:focus { border-color: #426d51; box-shadow: 0 0 0 3px rgba(66,109,81,.12); }
+.field-hint { margin: .35rem 0 0; color: #7b837e; font-size: .72rem; }
 .primary-button { width: 100%; margin-top: 1.6rem; padding: .95rem 1rem; display: flex; justify-content: center; align-items: center; gap: .65rem; color: white; background: #315a40; border: 0; border-radius: .45rem; font-weight: 700; cursor: pointer; transition: background .15s, transform .15s; }
 .primary-button:hover { background: #274c35; transform: translateY(-1px); }
 .primary-button:disabled { opacity: .65; cursor: wait; transform: none; }
@@ -45,6 +46,7 @@ a { color: inherit; text-decoration: none; }
 .wordmark { display: inline-flex; align-items: center; gap: .68rem; color: #faf8f0; font-family: Georgia, serif; font-size: 1.27rem; }
 .wordmark svg { color: #e1bd68; }
 .sidebar nav { margin-top: 3.3rem; }
+.sidebar nav { display: grid; gap: .2rem; }
 .sidebar nav a { display: flex; align-items: center; gap: .75rem; padding: .76rem .8rem; color: #9fafA5; border-radius: .45rem; font-size: .88rem; font-weight: 650; }
 .sidebar nav a.active, .sidebar nav a:hover { color: white; background: rgba(255,255,255,.075); }
 .account-card { margin-top: auto; padding: .85rem .7rem; display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; align-items: center; border-top: 1px solid rgba(255,255,255,.1); }
@@ -101,7 +103,7 @@ a { color: inherit; text-decoration: none; }
 .dialog h2 { margin: 0; font-family: Georgia, serif; font-size: 2rem; font-weight: 500; }
 .dialog-intro { margin: .6rem 0 1.5rem; color: #707a74; line-height: 1.5; }
 .dialog label, .upload-card label, .generation-panel label { display: block; margin: 1rem 0 .4rem; color: #34433a; font-size: .76rem; font-weight: 750; }
-.dialog input, .dialog textarea, .upload-card input, .generation-panel input, .question-body input, .question-body textarea, .question-body select { width: 100%; padding: .78rem .85rem; color: #1e2a23; background: #fff; border: 1px solid #ced3cc; border-radius: .4rem; outline: none; }
+.dialog input, .dialog textarea, .dialog select, .upload-card input, .generation-panel input, .question-body input, .question-body textarea, .question-body select { width: 100%; padding: .78rem .85rem; color: #1e2a23; background: #fff; border: 1px solid #ced3cc; border-radius: .4rem; outline: none; }
 .dialog input:focus, .dialog textarea:focus, .upload-card input:focus, .generation-panel input:focus, .question-body input:focus, .question-body textarea:focus, .question-body select:focus { border-color: #467052; box-shadow: 0 0 0 3px rgba(70,112,82,.11); }
 .dialog-actions { margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: .5rem; }
 .back-link { width: fit-content; display: inline-flex; align-items: center; gap: .38rem; color: #657168; font-size: .75rem; font-weight: 700; }
@@ -160,6 +162,28 @@ a { color: inherit; text-decoration: none; }
 .template-group-title h3 { margin: 0; color: #445149; font-size: .76rem; letter-spacing: .06em; text-transform: uppercase; }
 .text-link { display: inline-flex; align-items: center; gap: .3rem; color: #3d694c; font-size: .68rem; font-weight: 700; }
 
+.password-gate { min-height: 100vh; display: grid; place-items: center; padding: 2rem; background: #f4f1eb; }
+.password-gate > section { width: min(25rem, 100%); }
+.gate-logout { width: 100%; margin-top: 1rem; padding: .6rem; color: #637068; background: transparent; border: 0; cursor: pointer; }
+.gate-logout:hover { color: #294c37; }
+.account-page { max-width: 42rem; }
+.account-card-form { margin-top: 2rem; padding: 2rem; background: rgba(255,255,255,.62); border: 1px solid #dcded8; border-radius: .7rem; }
+.account-card-form .success-banner { margin-top: 1rem; }
+.users-frame { max-width: 90rem; }
+.user-list { display: grid; gap: .6rem; }
+.user-row { padding: 1rem; display: grid; grid-template-columns: auto minmax(10rem, 1fr) 10rem auto; gap: 1rem; align-items: center; background: rgba(255,255,255,.62); border: 1px solid #dcded8; border-radius: .6rem; }
+.user-status { width: 2.5rem; height: 2.5rem; display: grid; place-items: center; color: #8b5148; background: #f3e4e0; border-radius: 50%; }
+.user-status.active { color: #376649; background: #e1ebe3; }
+.user-copy { min-width: 0; display: flex; flex-direction: column; }
+.user-copy strong { color: #26332b; font-size: .88rem; }
+.user-copy span { color: #7b847e; font-size: .72rem; }
+.user-copy small { width: fit-content; margin-top: .35rem; padding: .18rem .4rem; color: #835d28; background: #f3e8d5; border-radius: 2rem; font-size: .6rem; font-weight: 750; }
+.user-row label { color: #707a74; font-size: .65rem; font-weight: 700; }
+.user-row label span { display: block; margin-bottom: .3rem; }
+.user-row select { width: 100%; padding: .48rem; color: #26332b; background: white; border: 1px solid #ced3cc; border-radius: .4rem; }
+.user-actions { display: flex; gap: .4rem; }
+.dialog-icon { margin-bottom: .8rem; color: #42634e; }
+
 @media (max-width: 820px) {
   .login-shell { grid-template-columns: 1fr; }
   .login-story { min-height: 42vh; padding: 1.6rem; }
@@ -176,6 +200,8 @@ a { color: inherit; text-decoration: none; }
   .page-frame { padding: 2rem 1rem; }
   .page-heading { align-items: start; flex-direction: column; }
   .set-grid, .manage-grid { grid-template-columns: 1fr; }
+  .user-row { grid-template-columns: auto 1fr; }
+  .user-row > label, .user-actions { grid-column: 2; }
   .questionnaire-layout { padding: 1.4rem 1rem 2rem; grid-template-columns: 1fr; }
   .generation-panel { position: static; grid-row: 1; margin-top: 1rem; }
   .questionnaire-main { display: contents; }
@@ -194,6 +220,8 @@ a { color: inherit; text-decoration: none; }
   .yesno-group { grid-template-columns: repeat(2, 1fr); }
   .version-row { grid-template-columns: auto 1fr; }
   .version-actions { grid-column: 1 / -1; justify-content: flex-end; }
+  .user-row > label, .user-actions { grid-column: 1 / -1; }
+  .user-actions { flex-direction: column; }
 }
 
 @media (prefers-reduced-motion: reduce) {

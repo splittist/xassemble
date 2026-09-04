@@ -3,6 +3,9 @@
 A small document-assembly backend for internal legal teams. It turns a Word-authored
 questionnaire and one or more `docxtpl` Word templates into generated `.docx` files.
 
+For non-technical instructions on assembling documents and creating questionnaires and
+templates, see the [xassemble User Guide](USER_GUIDE.md).
+
 This repository currently implements the backend foundation from `PLAN.md`:
 
 - strict parsing of the two questionnaire tables;
@@ -14,7 +17,8 @@ This repository currently implements the backend foundation from `PLAN.md`:
 - Word generation, ZIP output for multiple documents, and generation audit records;
 - current and historical source-document downloads;
 - per-user Argon2 authentication with signed, expiring session cookies;
-- immediate access revocation by deactivating a user;
+- self-service and compulsory first-login password changes;
+- web-based administrator user management with immediate session revocation;
 - a responsive React interface for login, questionnaires, downloads, uploads, publishing, and
   rollback.
 
@@ -33,7 +37,7 @@ npm ci
 npm run build
 Set-Location ..
 $env:XASSEMBLE_SECRET_KEY = uv run python -c "import secrets; print(secrets.token_urlsafe(48))"
-uv run xassemble-user add editor --name "Example Editor"
+uv run xassemble-user add admin --name "Example Administrator" --admin
 uv run uvicorn xassemble.app:app --reload
 ```
 
@@ -66,16 +70,26 @@ questionnaire and management routes.
 
 ## Users and sessions
 
-User administration is deliberately local and has no web endpoints. Passwords are prompted for
-without echoing or placing them in shell history:
+Bootstrap the first administrator locally. Passwords are prompted for without echoing or placing
+them in shell history:
 
 ```powershell
 uv run xassemble-user list
+uv run xassemble-user add admin --name "Administrator" --admin
 uv run xassemble-user add jsmith --name "Jane Smith"
 uv run xassemble-user reset-password jsmith
 uv run xassemble-user deactivate jsmith
 uv run xassemble-user activate jsmith
 ```
+
+Administrators can then manage accounts from **Users** in the web interface. New accounts and
+accounts whose passwords are reset must replace their temporary password on their next login.
+Every user can change their own password from **Change password**. The CLI remains available for
+recovery and bootstrap operations.
+
+This release changes the `users` table and intentionally does not migrate an older database.
+Before deploying it, remove the existing application database as agreed, start the application
+to create the new schema, and bootstrap an administrator with `xassemble-user add --admin`.
 
 `POST /auth/login` accepts `username` and `password`, sets an HttpOnly, SameSite=Lax cookie, and
 returns the user's public profile. `POST /auth/logout` clears it and `GET /auth/me` returns the
@@ -83,8 +97,11 @@ current profile. Sessions last eight hours by default; configure `XASSEMBLE_SESS
 change this. Set `XASSEMBLE_SECURE_COOKIES=true` whenever the app is served behind HTTPS.
 
 Every protected request verifies the cookie signature and expiry, then reloads the user from
-SQLite and checks `active`. Deactivation therefore revokes existing sessions immediately. Audit
-fields are taken from the authenticated username rather than accepted from request data.
+SQLite and checks `active` and the session version. Deactivation and administrative password
+resets therefore revoke existing sessions immediately. Audit fields are taken from the
+authenticated username rather than accepted from request data. Administrators control user
+accounts only; all active users retain the same document-set creation, deletion, and publishing
+permissions.
 
 ## Database operations
 

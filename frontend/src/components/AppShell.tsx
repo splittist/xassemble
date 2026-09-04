@@ -1,4 +1,4 @@
-import { FileStack, LogOut, Menu, UserRound, X } from "lucide-react";
+import { FileStack, KeyRound, LogOut, Menu, UserRound, Users, X } from "lucide-react";
 import { ReactNode, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 
@@ -20,7 +20,11 @@ export function AppShell({ children, user, onLogout }: Props) {
           <Link to="/" className="wordmark"><FileStack size={22} /> xassemble</Link>
           <button className="icon-button sidebar-close" aria-label="Close navigation" onClick={() => setMenuOpen(false)}><X size={20} /></button>
         </div>
-        <nav aria-label="Main navigation"><NavLink to="/" end onClick={() => setMenuOpen(false)}><FileStack size={18} /> Document sets</NavLink></nav>
+        <nav aria-label="Main navigation">
+          <NavLink to="/" end onClick={() => setMenuOpen(false)}><FileStack size={18} /> Document sets</NavLink>
+          <NavLink to="/account" onClick={() => setMenuOpen(false)}><KeyRound size={18} /> Change password</NavLink>
+          {user.role === "admin" && <NavLink to="/users" onClick={() => setMenuOpen(false)}><Users size={18} /> Users</NavLink>}
+        </nav>
         <div className="account-card">
           <span className="avatar"><UserRound size={17} /></span>
           <span><strong>{user.name}</strong><small>@{user.username}</small></span>

@@ -14,7 +14,9 @@ TEST_SECRET = "test-secret-key-that-is-longer-than-thirty-two-characters"
 def authenticated_app(database_path: Path) -> tuple[FastAPI, Database]:
     database = Database(database_path)
     database.initialize()
-    database.create_user("Test Editor", "editor", hash_password(TEST_PASSWORD))
+    database.create_user(
+        "Test Editor", "editor", hash_password(TEST_PASSWORD), must_change_password=False
+    )
     return create_app(database_path, secret_key=TEST_SECRET), database
 
 

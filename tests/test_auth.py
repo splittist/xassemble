@@ -83,7 +83,9 @@ def test_tampered_cookie_is_rejected(tmp_path) -> None:
 def test_passwords_are_argon2_hashed(tmp_path) -> None:
     database = Database(tmp_path / "test.sqlite3")
     database.initialize()
-    user = database.create_user("Editor", "editor", hash_password(TEST_PASSWORD))
+    user = database.create_user(
+        "Editor", "editor", hash_password(TEST_PASSWORD), must_change_password=False
+    )
     assert user["password_hash"].startswith("$argon2id$")
     assert TEST_PASSWORD not in user["password_hash"]
 

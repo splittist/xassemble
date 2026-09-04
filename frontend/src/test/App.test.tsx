@@ -24,7 +24,7 @@ describe("authentication", () => {
 
   test("submits credentials and hands back the user", async () => {
     const onLogin = vi.fn();
-    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse({ id: 1, name: "Jane Smith", username: "jsmith", role: "member", active: true }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse({ id: 1, name: "Jane Smith", username: "jsmith", role: "member", active: true, must_change_password: false }));
     render(<LoginPage onLogin={onLogin} />);
     fireEvent.change(screen.getByLabelText("Username"), { target: { value: "jsmith" } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "a secure password" } });
@@ -32,13 +32,42 @@ describe("authentication", () => {
     await waitFor(() => expect(onLogin).toHaveBeenCalledWith(expect.objectContaining({ username: "jsmith" })));
     expect(globalThis.fetch).toHaveBeenCalledWith("/auth/login", expect.objectContaining({ method: "POST" }));
   });
+
+  test("requires a temporary password to be changed before opening the app", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const path = String(input);
+      if (path === "/auth/me") return jsonResponse({ id: 1, name: "Jane Smith", username: "jsmith", role: "member", active: true, must_change_password: true });
+      if (path === "/auth/change-password" && init?.method === "POST") return jsonResponse({ id: 1, name: "Jane Smith", username: "jsmith", role: "member", active: true, must_change_password: false });
+      if (path === "/document-sets") return jsonResponse([]);
+      return jsonResponse({}, 404);
+    });
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Choose a new password" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Current password"), { target: { value: "temporary password" } });
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "a different secure password" } });
+    fireEvent.change(screen.getByLabelText("Confirm new password"), { target: { value: "a different secure password" } });
+    fireEvent.click(screen.getByRole("button", { name: /change password/i }));
+    expect(await screen.findByRole("heading", { name: "Create your first document set" })).toBeInTheDocument();
+  });
+
+  test("shows user administration only to administrators", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const path = String(input);
+      if (path === "/auth/me") return jsonResponse({ id: 1, name: "Admin", username: "admin", role: "admin", active: true, must_change_password: false });
+      if (path === "/document-sets") return jsonResponse([]);
+      return jsonResponse({}, 404);
+    });
+    render(<App />);
+    expect(await screen.findByRole("link", { name: "Users" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Change password" })).toBeInTheDocument();
+  });
 });
 
 describe("document library", () => {
   test("renders authenticated document sets and their readiness", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const path = String(input);
-      if (path === "/auth/me") return jsonResponse({ id: 1, name: "Jane Smith", username: "jsmith", role: "member", active: true });
+      if (path === "/auth/me") return jsonResponse({ id: 1, name: "Jane Smith", username: "jsmith", role: "member", active: true, must_change_password: false });
       if (path === "/document-sets") return jsonResponse([{ id: 2, slug: "nda-pack", name: "NDA Pack", description: "Prepare an NDA", created_at: "2026-08-22", questionnaire_version: 3, current_template_count: 2 }]);
       return jsonResponse({}, 404);
     });
