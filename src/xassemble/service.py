@@ -69,7 +69,7 @@ def generate_documents(
         if template_row is None:
             raise GenerationError(f"No published template exists for output '{output.label}'")
         template = DocxTemplate(BytesIO(template_row["docx_blob"]))
-        template.render(context)
+        template.render(context, autoescape=True)
         destination = BytesIO()
         template.save(destination)
         filename = _output_filename(output.filename_pattern, project_code, output.label)

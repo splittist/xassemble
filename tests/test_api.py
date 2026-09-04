@@ -51,14 +51,18 @@ def test_version_publish_evaluate_generate_and_rollback_workflow(tmp_path) -> No
         generation = client.post(
             "/document-sets/nda-pack/generate",
             json={
-                "answers": {"client_name": "Example Ltd", "urgent": True, "reason": "Today"},
+                "answers": {
+                    "client_name": "Example & <Client>",
+                    "urgent": True,
+                    "reason": "Today",
+                },
                 "project_code": "ABC-123",
             },
         )
         assert generation.status_code == 200, generation.text
         assert generation.headers["content-type"] == DOCX_MEDIA_TYPE
         rendered = Document(BytesIO(generation.content))
-        assert rendered.paragraphs[0].text == "Dear Example Ltd"
+        assert rendered.paragraphs[0].text == "Dear Example & <Client>"
 
         second_upload = client.post(
             "/document-sets/nda-pack/questionnaire-versions",
