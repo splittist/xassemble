@@ -40,6 +40,8 @@ def test_first_login_requires_a_password_change(tmp_path) -> None:
         assert login.status_code == 200
         assert login.json()["must_change_password"] is True
         assert client.get("/document-sets").status_code == 403
+        assert client.get("/document-sets/letters/questionnaire/answer-briefing").status_code == 403
+        assert client.post("/document-sets/letters/questionnaire/answer-import").status_code == 403
         assert client.get("/auth/me").status_code == 200
         assert client.post(
             "/auth/change-password",

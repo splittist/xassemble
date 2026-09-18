@@ -227,3 +227,14 @@ a { color: inherit; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+.answer-exchange { margin: 1.5rem 0; padding: 1.5rem; border: 1px solid #d5dfdc; border-radius: 16px; background: #f7faf8; }
+.answer-exchange h2 { font-size: 1.2rem; margin-top: 0; }
+.answer-exchange p { line-height: 1.5; }
+.import-label { display: block; margin-top: 1rem; }
+.import-label input { display: block; margin-top: .5rem; max-width: 100%; }
+.import-row { border-top: 1px solid #d5dfdc; padding: 1rem 0; overflow-wrap: anywhere; }
+.import-row input[type="checkbox"], .missing-answers input[type="checkbox"] { width: auto; margin-right: .5rem; }
+.answer-value { white-space: pre-wrap; }
+.import-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.imported-badge { color: #25634c; font-size: .85rem; }
+.missing-answers { margin: 1rem 0; font-size: .85rem; overflow-wrap: anywhere; }

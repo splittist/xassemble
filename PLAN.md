@@ -262,7 +262,8 @@ rather than on disk (there's no filesystem copy to eyeball directly).
   a real docxtpl capability, deferred; will need both a questionnaire
   table extension (something like a "repeat group") and an answer-data
   model extension when it's tackled.
-- Answer-key upload to pre-fill answers.
+- Answer-key upload to pre-fill answers: now implemented as the BYOLLM JSON exchange extension;
+  see `docs/external-llm-answers.md` and the user guide.
 - SSO / external identity provider.
 - Role split beyond the single flat role (could be added later by
   introducing an `is_admin`-style flag without restructuring the rest of

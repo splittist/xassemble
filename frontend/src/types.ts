@@ -34,8 +34,11 @@ export interface Question {
 
 export interface Questionnaire {
   version_id: number;
+  schema_sha256: string;
   questions: Question[];
 }
+
+export type Answers = Record<string, string | boolean | null>;
 
 export interface Version {
   id: number;

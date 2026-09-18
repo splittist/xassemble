@@ -19,8 +19,8 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     let message = "Something went wrong. Please try again.";
     try {
-      const body = (await response.json()) as { detail?: string };
-      message = body.detail ?? message;
+      const body = (await response.json()) as { detail?: unknown };
+      message = errorDetail(body.detail, message);
     } catch {
       // The fallback message is intentionally human-readable.
     }
@@ -42,8 +42,8 @@ export async function download(path: string, init?: RequestInit): Promise<void> 
   if (!response.ok) {
     let message = "The document could not be downloaded.";
     try {
-      const body = (await response.json()) as { detail?: string };
-      message = body.detail ?? message;
+      const body = (await response.json()) as { detail?: unknown };
+      message = errorDetail(body.detail, message);
     } catch {
       // Keep the useful fallback.
     }
@@ -60,4 +60,13 @@ export async function download(path: string, init?: RequestInit): Promise<void> 
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+function errorDetail(detail: unknown, fallback: string): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) return detail.map(item => {
+    const field = Array.isArray(item?.loc) ? item.loc.filter((part: unknown) => part !== "body").join(".") : "Request";
+    return `${field}: ${typeof item?.msg === "string" ? item.msg : "Invalid value"}`;
+  }).join("; ") || fallback;
+  return fallback;
 }

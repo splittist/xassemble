@@ -175,4 +175,29 @@ overlap.
 ## Current scope
 
 The planned v1 application and single-container deployment slices are complete. Repeating groups,
-answer-key upload, SSO, multiple roles, and rich-text answers remain intentionally out of scope.
+SSO, multiple roles, and rich-text answers remain intentionally out of scope.
+
+## Bring your own LLM (BYOLLM)
+
+The questionnaire page can download a Markdown briefing for use with an organisation-approved
+LLM and import its complete or partial JSON answers. xassemble has no LLM API integration and
+requires no model keys. Users control their external answering tools, resources, and policies.
+Imported answers are validated and previewed; existing answers are preserved unless the user
+explicitly selects replacements. Answer files are not saved as drafts.
+
+The [design](docs/external-llm-answers.md) describes the exchange format and boundaries.
+The [user guide](USER_GUIDE.md#prepare-answers-with-your-own-llm) explains the workflow.
+
+New authenticated endpoints:
+
+- `GET /document-sets/{slug}/questionnaire/answer-briefing?version_id=…&schema_sha256=…`
+- `POST /document-sets/{slug}/questionnaire/answer-import` (multipart `.json` file)
+
+**API contract change:** questionnaire responses now include `schema_sha256`. Evaluation and
+generation requests require `questionnaire_version_id` and `questionnaire_schema_sha256` from
+that response, alongside `answers`. Stale identities return `409`. Answer types, choice options,
+unknown keys, XML-invalid characters, and a 20,000-character per-answer limit are validated on
+both endpoints. Generation with unanswered visible questions also requires the Boolean
+`acknowledge_incomplete: true`. Import files are limited to 1 MiB and validated before application.
+Evaluation and generation request bodies are also limited to 1 MiB; multipart import requests
+allow an additional 64 KiB for framing. Limits apply before parsing, including streamed requests.

@@ -42,15 +42,19 @@ def test_version_publish_evaluate_generate_and_rollback_workflow(tmp_path) -> No
             f"/document-sets/nda-pack/template-versions/{template_v1}/publish"
         ).status_code == 200
 
+        current_schema = client.get("/document-sets/nda-pack/questionnaire").json()
+        identity = {"questionnaire_version_id": current_schema["version_id"],
+                    "questionnaire_schema_sha256": current_schema["schema_sha256"]}
         evaluation = client.post(
             "/document-sets/nda-pack/questionnaire/evaluate",
-            json={"answers": {"urgent": False}},
+            json={"answers": {"urgent": False}, **identity},
         )
         assert evaluation.json()["hidden"] == ["reason"]
 
         generation = client.post(
             "/document-sets/nda-pack/generate",
             json={
+                **identity,
                 "answers": {
                     "client_name": "Example & <Client>",
                     "urgent": True,
@@ -134,4 +138,3 @@ def test_delete_document_set_removes_it_and_its_versions(tmp_path) -> None:
         assert client.get("/document-sets").json() == []
         assert client.get("/document-sets/letters/versions").status_code == 404
         assert client.delete("/document-sets/letters").status_code == 404
-

@@ -10,8 +10,17 @@ from typing import Annotated, Literal
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool, StrictInt
 
+from .answers import (
+    MAX_ANSWER_BYTES,
+    briefing,
+    envelope,
+    has_answer,
+    parse_answer_file,
+    schema_hash,
+    validate_answers,
+)
 from .auth import (
     DEFAULT_SESSION_SECONDS,
     SESSION_COOKIE,
@@ -25,6 +34,7 @@ from .auth import (
 from .database import Database, load_schema
 from .manual import ManualExportError, export_manual_template
 from .parser import QuestionnaireError, parse_questionnaire
+from .request_limits import AnswerRequestLimit
 from .service import (
     GenerationError,
     generate_documents,
@@ -57,10 +67,13 @@ class DocumentSetCreate(BaseModel):
 
 class AnswersRequest(BaseModel):
     answers: dict[str, object] = Field(default_factory=dict)
+    questionnaire_version_id: StrictInt
+    questionnaire_schema_sha256: str
 
 
 class GenerateRequest(AnswersRequest):
     project_code: str = Field(min_length=1, max_length=100)
+    acknowledge_incomplete: StrictBool = False
 
 
 class LoginRequest(BaseModel):
@@ -124,6 +137,7 @@ def create_app(
 
     app = FastAPI(title="xassemble", version="0.1.0", lifespan=lifespan)
     app.state.database = database
+    app.add_middleware(AnswerRequestLimit)
 
     @app.middleware("http")
     async def require_active_user(request: Request, call_next):
@@ -399,28 +413,71 @@ def create_app(
         schema = load_schema(row)
         return {
             "version_id": row["id"],
+            "schema_sha256": schema_hash(schema),
             "questions": [question.to_dict() for question in schema.questions],
         }
+
+    @app.get("/document-sets/{slug}/questionnaire/answer-briefing")
+    def answer_briefing(slug: str, version_id: int, schema_sha256: str) -> Response:
+        _, row = _current_questionnaire(database, slug)
+        _check_answer_identity(row, version_id, schema_sha256)
+        return _download(briefing(slug, row["id"], load_schema(row)),
+                         f"{slug}-answer-briefing.md", "text/markdown; charset=utf-8")
+
+    @app.post("/document-sets/{slug}/questionnaire/answer-import")
+    async def answer_import(slug: str, file: Annotated[UploadFile, File()]) -> dict[str, object]:
+        _, row = _current_questionnaire(database, slug)
+        if not file.filename or not file.filename.lower().endswith(".json"):
+            raise HTTPException(422, "Upload must be a .json file")
+        content = await file.read(MAX_ANSWER_BYTES + 1)
+        if len(content) > MAX_ANSWER_BYTES:
+            raise HTTPException(413, "Answer file exceeds the 1 MiB limit")
+        try:
+            value = parse_answer_file(content)
+            if value["document_set_slug"] != slug:
+                raise HTTPException(409, "This answer file belongs to a different document set")
+            _check_answer_identity(row, value["questionnaire_version_id"],
+                                   value["questionnaire_schema_sha256"])
+            schema = load_schema(row)
+            answers = validate_answers(schema, value["answers"])
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return envelope(slug, row["id"], schema) | {"answers": answers}
 
     @app.post("/document-sets/{slug}/questionnaire/evaluate")
     def evaluate(slug: str, payload: AnswersRequest) -> dict[str, list[str]]:
         _, row = _current_questionnaire(database, slug)
-        visible, hidden, _ = questionnaire_visibility(load_schema(row), payload.answers)
+        _check_answer_identity(row, payload.questionnaire_version_id,
+                               payload.questionnaire_schema_sha256)
+        try:
+            answers = validate_answers(load_schema(row), payload.answers)
+            visible, hidden, _ = questionnaire_visibility(load_schema(row), answers)
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(422, str(exc)) from exc
         return {"visible": visible, "hidden": hidden}
 
     @app.post("/document-sets/{slug}/generate")
     def generate(slug: str, payload: GenerateRequest, request: Request) -> Response:
         document_set, questionnaire_row = _current_questionnaire(database, slug)
+        _check_answer_identity(questionnaire_row, payload.questionnaire_version_id,
+                               payload.questionnaire_schema_sha256)
         try:
+            schema = load_schema(questionnaire_row)
+            answers = validate_answers(schema, payload.answers)
+            visible, _, _ = questionnaire_visibility(schema, answers)
+            missing = [key for key in visible if not has_answer(answers.get(key))]
+            if missing and not payload.acknowledge_incomplete:
+                raise ValueError("Review missing answers and acknowledge incomplete generation: "
+                                 + ", ".join(missing))
             content, filename, media_type = generate_documents(
                 database,
                 document_set["id"],
                 questionnaire_row,
-                payload.answers,
+                answers,
                 payload.project_code,
                 request.state.user["username"],
             )
-        except (GenerationError, ValueError) as exc:
+        except (GenerationError, ValueError, TypeError) as exc:
             raise HTTPException(422, str(exc)) from exc
         return _download(content, filename, media_type)
 
@@ -488,6 +545,12 @@ def create_app(
 def _require_admin(request: Request) -> None:
     if request.state.user["role"] != "admin":
         raise HTTPException(403, "Administrator access required")
+
+
+def _check_answer_identity(row: dict[str, object], version_id: object, digest: object) -> None:
+    if row["id"] != version_id or schema_hash(load_schema(row)) != digest:
+        raise HTTPException(409, "The questionnaire has changed. Keep your draft for reference, "
+                            "then reopen the questionnaire and download a new briefing.")
 
 
 def _document_set(database: Database, slug: str) -> dict[str, object]:

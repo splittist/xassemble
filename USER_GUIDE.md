@@ -53,9 +53,42 @@ Your answers are held only on the current questionnaire page. They are not saved
 you refresh the page, close the tab, sign out, or return to **All document sets**, you may lose
 them.
 
-> **Important:** The progress percentage is a guide, not a final validation check. xassemble can
-> generate a document even when a visible question is blank. Check the answers yourself before
-> continuing.
+> **Important:** Check the answers yourself before continuing. If visible questions remain blank,
+> review the missing-answer list and explicitly select the incomplete-first-draft acknowledgement
+> before generation becomes available.
+
+#### Prepare answers with your own LLM
+
+1. Select **Download LLM briefing** on the questionnaire page. The Markdown file contains the
+   questions, answer types, options, examples, conditional rules, and an empty JSON answer envelope.
+2. Use your organisation's approved LLM with your own resources, procedures, and policies. Give
+   it the briefing and appropriate matter material. xassemble does not contact that tool or use
+   API keys. The briefing does not contain your existing answers or Word templates.
+3. Ask the tool to return the specified `.json` file. It can answer all or only some questions.
+   Unsupported answers should be omitted; examples in the briefing are not facts about your matter.
+4. Select **Import answers (.json)**. A preview shows additions, unchanged answers, replacements,
+   and answers hidden by the selected values. Blank or omitted values never erase existing answers.
+5. Select any replacements you want, then **Apply selected answers**. Additions are selected by
+   default. **Cancel import** leaves the questionnaire untouched. Editing the questionnaire while
+   a preview is open clears its selections so you can review them against the latest answers.
+6. Review the imported answers in the questionnaire and complete or edit them. Imported values
+   are labelled for review. xassemble evaluates conditional questions itself; currently hidden
+   answers are excluded from generated documents.
+7. Enter a project code and generate through the normal process.
+
+The file must contain plain JSON, without Markdown fences or surrounding prose. Yes/No values
+must be `true` or `false`, choices must match an option exactly, and text answers must be strings.
+Files are limited to 1 MiB, with up to 20,000 characters per answer. An invalid file produces an
+error without changing your draft; correct the file in your own system and import it again.
+
+If the questionnaire has changed since export or since opening the page, xassemble blocks stale
+imports and generation. Keep your draft for reference before leaving, reopen the questionnaire,
+and download a new briefing. Do not simply change version metadata in an old answer file.
+
+Answers remain in page memory between requests and are sent to xassemble for validation,
+visibility evaluation, and generation. Imported files and answers are not saved as drafts.
+xassemble cannot verify which external model produced a file; approval remains your
+organisation's responsibility.
 
 ### 4. Generate and access the results
 
@@ -130,7 +163,7 @@ Add one question per row.
 | `question_text` | The main question shown to the user. To add smaller guidance text, create a second paragraph in the same Word cell. All paragraphs after the first become guidance text. |
 | `type` | Exactly one of: `yesno`, `choice`, `text`, or `textarea`. |
 | `options` | Required for `choice`; leave blank for other types. Separate choices with a vertical bar (`Employee|Consultant|Director`) or put each choice on a new line. |
-| `example` | Optional sample text that the user can copy. Separate multiple examples with a vertical bar or new lines. Examples are most suitable for `text` and `textarea`. |
+| `example` | Optional sample text that the user can copy. Separate multiple examples with a vertical bar or new lines. Examples are supported for `text` and `textarea`, and for `choice` when they exactly match an option. Yes/No questions use the Yes and No buttons instead. |
 | `skip_if` | Optional rule that hides this question when the rule is true. It may refer only to questions in earlier rows. Leave blank to always show the question. |
 | `section` | Optional heading used to group questions, for example, `Parties` or `Termination details`. Repeat the same value on consecutive rows in the same section. |
 
