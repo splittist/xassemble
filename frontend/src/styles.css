@@ -158,7 +158,7 @@ a { color: inherit; text-decoration: none; }
 .current-pill { padding: .18rem .35rem; color: #326245; background: #e2eee5; border-radius: 2rem; font-size: .55rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .version-actions { display: flex; gap: .3rem; align-items: center; }
 .template-group { margin-top: 1.2rem; }
-.template-group-title { margin-bottom: .5rem; display: flex; justify-content: space-between; align-items: center; }
+.template-group-title { margin-bottom: .5rem; display: flex; flex-wrap: wrap; gap: .5rem; justify-content: space-between; align-items: center; }
 .template-group-title h3 { margin: 0; color: #445149; font-size: .76rem; letter-spacing: .06em; text-transform: uppercase; }
 .text-link { display: inline-flex; align-items: center; gap: .3rem; color: #3d694c; font-size: .68rem; font-weight: 700; }
 

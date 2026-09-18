@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, Download, Files, FileText, RotateCcw, Trash2, Upload, X } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { api } from "../api";
+import { api, download } from "../api";
 import { ErrorMessage, Loading } from "../components/Feedback";
 import type { Version, VersionHistory } from "../types";
 
@@ -22,6 +22,14 @@ export function ManagePage() {
     catch (caught) { setError(caught instanceof Error ? caught.message : "Could not load version history."); }
   }
   useEffect(() => { void load(); }, [slug]);
+
+  async function downloadManual(label: string) {
+    setBusy(true); setError("");
+    try {
+      await download(`/document-sets/${slug}/current/templates/${encodeURIComponent(label)}/manual`);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not export a manual template."); }
+    finally { setBusy(false); }
+  }
 
   async function upload(kind: VersionKind, form: HTMLFormElement) {
     setBusy(true); setError(""); setNotice("");
@@ -73,7 +81,7 @@ export function ManagePage() {
           <SourceHeader icon={<Files />} title="Templates" description="One Word file for each output label" />
           <UploadCard kind="template" busy={busy} onSubmit={(form) => void upload("template", form)} />
           {groupedTemplates.length === 0 ? <div className="no-versions">No template versions uploaded yet.</div> : groupedTemplates.map(([label, versions]) => (
-            <div className="template-group" key={label}><div className="template-group-title"><h3>{humanize(label)}</h3>{versions.some((version) => version.is_current) && <a className="text-link" href={`/document-sets/${slug}/current/templates/${label}`}><Download size={14} /> Current file</a>}</div><VersionList kind="template" slug={slug} versions={versions} busy={busy} onPublish={publish} /></div>
+            <div className="template-group" key={label}><div className="template-group-title"><h3>{humanize(label)}</h3>{versions.some((version) => version.is_current) && <><a className="text-link" href={`/document-sets/${slug}/current/templates/${label}`}><Download size={14} /> Current file</a><button className="button quiet small" disabled={busy} onClick={() => void downloadManual(label)} title="Highlighted placeholders and conditional sections, using the current questionnaire"><Download size={14} /> Manual template</button></>}</div><VersionList kind="template" slug={slug} versions={versions} busy={busy} onPublish={publish} /></div>
           ))}
         </div>
       </section>

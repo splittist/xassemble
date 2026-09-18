@@ -23,6 +23,7 @@ from .auth import (
     verify_password,
 )
 from .database import Database, load_schema
+from .manual import ManualExportError, export_manual_template
 from .parser import QuestionnaireError, parse_questionnaire
 from .service import (
     GenerationError,
@@ -427,6 +428,24 @@ def create_app(
     def download_current_questionnaire(slug: str) -> Response:
         _, row = _current_questionnaire(database, slug)
         return _download(row["docx_blob"], f"questionnaire-v{row['version_no']}.docx")
+
+    @app.get("/document-sets/{slug}/current/templates/{label}/manual")
+    def download_manual_template(slug: str, label: str) -> Response:
+        document_set, questionnaire = _current_questionnaire(database, slug)
+        row = database.get_template(document_set["id"], label=label)
+        if row is None:
+            raise HTTPException(404, "Published template not found")
+        schema = load_schema(questionnaire)
+        output = next((item for item in schema.outputs if item.label == label), None)
+        if output is None:
+            raise HTTPException(422, "This template has no output rule in the current questionnaire")
+        try:
+            content = export_manual_template(row["docx_blob"], schema,
+                                             include_if=output.include_if)
+        except ManualExportError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return _download(content, f"{label}-manual-t{row['version_no']}"
+                         f"-q{questionnaire['version_no']}.docx")
 
     @app.get("/document-sets/{slug}/current/templates/{label}")
     def download_current_template(slug: str, label: str) -> Response:

@@ -6,6 +6,9 @@ questionnaire and one or more `docxtpl` Word templates into generated `.docx` fi
 For non-technical instructions on assembling documents and creating questionnaires and
 templates, see the [xassemble User Guide](USER_GUIDE.md).
 
+To create highlighted Word templates for manual completion, use **Manual template**
+on the Manage page or the [local manual-export command](docs/manual-template-export.md).
+
 This repository currently implements the backend foundation from `PLAN.md`:
 
 - strict parsing of the two questionnaire tables;
