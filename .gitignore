@@ -11,3 +11,8 @@ backups/
 frontend/node_modules/
 frontend/dist/
 *.tsbuildinfo
+
+# Local database backups and generated documentation artifacts.
+/old_*.sqlite3
+/old_*.sqlite3-*
+/output/
