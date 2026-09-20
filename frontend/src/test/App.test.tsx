@@ -166,7 +166,7 @@ describe("questionnaire runner", () => {
         <Routes><Route path="/sets/:slug/assemble" element={<QuestionnairePage />} /></Routes>
       </MemoryRouter>
     );
-    expect(await screen.findByText("Why is it urgent?")).toBeInTheDocument();
+    expect(await screen.findByRole("textbox", { name: "Why is it urgent?" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "No" }));
     await waitFor(() => expect(screen.queryByText("Why is it urgent?")).not.toBeInTheDocument());
     expect(screen.getByText("100%")).toBeInTheDocument();
@@ -187,7 +187,7 @@ test("late evaluation responses cannot restore questions hidden by newer answers
   render(<MemoryRouter initialEntries={["/sets/letters/assemble"]}>
     <Routes><Route path="/sets/:slug/assemble" element={<QuestionnairePage />} /></Routes>
   </MemoryRouter>);
-  await screen.findByText("Reason?");
+  await screen.findByRole("textbox", { name: "Reason?" });
   await waitFor(() => expect(finishOld).toBeDefined());
   fireEvent.click(screen.getByRole("button", { name: "No" }));
   await waitFor(() => expect(screen.queryByText("Reason?")).not.toBeInTheDocument());

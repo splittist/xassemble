@@ -112,8 +112,14 @@ function QuestionnaireRunner({ slug }: { slug: string }) {
         <label htmlFor="project-code">Project code</label>
         <input id="project-code" value={projectCode} onChange={(event) => setProjectCode(event.target.value)} placeholder="e.g. MAT-2026-014" required />
         <p className="field-help">Used in generated filenames and the audit trail.</p>
-        {missing.length > 0 && <div className="missing-answers"><p>Missing answers: {missing.map(question => question.question_text).join("; ")}</p><label><input type="checkbox" checked={acknowledge} onChange={event => setAcknowledge(event.target.checked)} /> Generate an incomplete first draft with these answers missing</label></div>}
         <button className="button primary generate-button" disabled={generating || evaluated !== answers || (missing.length > 0 && !acknowledge)}><Download size={17} /> {generating ? "Generating…" : "Generate documents"}</button>
+        {missing.length > 0 && <>
+          <label className="incomplete-option"><input type="checkbox" checked={acknowledge} onChange={event => setAcknowledge(event.target.checked)} /><span>Generate an incomplete first draft with these answers missing</span></label>
+          <details className="missing-answers">
+            <summary>Unanswered questions ({missing.length})</summary>
+            <ul>{missing.map(question => <li key={question.variable_name}>{question.question_text}</li>)}</ul>
+          </details>
+        </>}
         <div className="draft-note"><ClipboardPen size={17} /><span><strong>First draft</strong>Review generated documents before use.</span></div>
       </aside>
     </form>

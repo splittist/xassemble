@@ -51,9 +51,10 @@ export function AnswerExchange({ slug, questionnaire, answers, onApply }: {
   }
 
   return <section className="answer-exchange" aria-label="Bring your own LLM">
-    <h2>Bring your own LLM</h2>
+    <div className="answer-exchange-heading"><h2>Bring your own LLM</h2><span className="experimental-badge">Experimental</span></div>
     <p>Download the briefing and use your organisation’s approved tool and procedures. Upload its JSON answers here for review. No LLM connection or API keys are needed.</p>
-    <button type="button" className="button secondary" onClick={async () => {
+    <div className="answer-exchange-controls">
+    <button type="button" className="button quiet" onClick={async () => {
       setError("");
       try { await download(`/document-sets/${slug}/questionnaire/answer-briefing?version_id=${questionnaire.version_id}&schema_sha256=${questionnaire.schema_sha256}`); }
       catch (caught) { setError(caught instanceof Error ? caught.message : "Could not download briefing."); }
@@ -64,6 +65,7 @@ export function AnswerExchange({ slug, questionnaire, answers, onApply }: {
         if (file) void importFile(file);
       }} />
     </label>
+    </div>
     {busy && <p role="status">Validating answer file…</p>}
     {error && <p role="alert">{error}</p>}
     {candidate && <div className="import-preview">
