@@ -138,3 +138,50 @@ def test_delete_document_set_removes_it_and_its_versions(tmp_path) -> None:
         assert client.get("/document-sets").json() == []
         assert client.get("/document-sets/letters/versions").status_code == 404
         assert client.delete("/document-sets/letters").status_code == 404
+
+
+def test_delete_template_removes_all_versions_for_its_label(tmp_path) -> None:
+    app, _ = authenticated_app(tmp_path / "test.sqlite3")
+    with TestClient(app) as client:
+        log_in(client)
+        client.post("/document-sets", json={"slug": "letters", "name": "Letters"})
+        questionnaire = client.post(
+            "/document-sets/letters/questionnaire-versions",
+            files={"file": ("q.docx", questionnaire_docx(), DOCX_MEDIA_TYPE)},
+            data={},
+        )
+        client.post(
+            f"/document-sets/letters/questionnaire-versions/{questionnaire.json()['id']}/publish"
+        )
+
+        first = client.post(
+            "/document-sets/letters/template-versions",
+            files={"file": ("letter.docx", template_docx(), DOCX_MEDIA_TYPE)},
+            data={"label": "letter"},
+        )
+        client.post(f"/document-sets/letters/template-versions/{first.json()['id']}/publish")
+        second = client.post(
+            "/document-sets/letters/template-versions",
+            files={"file": ("letter.docx", template_docx(), DOCX_MEDIA_TYPE)},
+            data={"label": "letter"},
+        )
+        client.post(f"/document-sets/letters/template-versions/{second.json()['id']}/publish")
+        other = client.post(
+            "/document-sets/letters/template-versions",
+            files={"file": ("other.docx", template_docx(), DOCX_MEDIA_TYPE)},
+            data={"label": "other"},
+        )
+        client.post(f"/document-sets/letters/template-versions/{other.json()['id']}/publish")
+
+        deleted = client.delete("/document-sets/letters/templates/letter")
+
+        assert deleted.status_code == 204
+        versions = client.get("/document-sets/letters/versions").json()
+        assert [version["label"] for version in versions["templates"]] == ["other"]
+        assert client.get("/document-sets/letters/current/templates/letter").status_code == 404
+        assert client.get(
+            f"/document-sets/letters/versions/template/{first.json()['id']}"
+        ).status_code == 404
+        document_set = client.get("/document-sets").json()[0]
+        assert document_set["current_template_count"] == 1
+        assert client.delete("/document-sets/letters/templates/letter").status_code == 404

@@ -402,6 +402,12 @@ To restore an older version, open **Manage**, find the older questionnaire or te
 select **Rollback**, and confirm. Rollback makes that saved version current; it does not delete
 newer versions. Test a generation after rollback.
 
+To remove an incorrect template label, select **Delete template** beside its group on **Manage**
+and confirm. This permanently deletes every uploaded version for that label, including the current
+version. It does not delete the document set or its questionnaire. Update the questionnaire's
+output-document rules if they still refer to the deleted label; generation for that output will
+not be possible until a template is uploaded and published again.
+
 The **Delete set** action is different: it permanently removes the complete document set, all
 questionnaire and template versions, and its generation history. It cannot be undone through
 xassemble. Use it only when deletion is authorised and a suitable backup exists.
