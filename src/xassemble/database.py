@@ -318,6 +318,14 @@ class Database:
             )
             connection.execute("DELETE FROM document_sets WHERE id = ?", (document_set_id,))
 
+    def delete_template(self, document_set_id: int, label: str) -> bool:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM template_versions WHERE document_set_id = ? AND label = ?",
+                (document_set_id, label),
+            )
+        return cursor.rowcount > 0
+
     def add_questionnaire(
         self,
         document_set_id: int,

@@ -54,6 +54,17 @@ export function ManagePage() {
     finally { setBusy(false); }
   }
 
+  async function deleteTemplate(label: string) {
+    if (!window.confirm(`Permanently delete the "${humanize(label)}" template and all of its versions? This cannot be undone.`)) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await api(`/document-sets/${slug}/templates/${encodeURIComponent(label)}`, { method: "DELETE" });
+      setNotice(`${humanize(label)} and all its versions were deleted.`);
+      await load();
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not delete this template."); }
+    finally { setBusy(false); }
+  }
+
   async function deleteSet() {
     setBusy(true); setError("");
     try {
@@ -81,7 +92,7 @@ export function ManagePage() {
           <SourceHeader icon={<Files />} title="Templates" description="One Word file for each output label" />
           <UploadCard kind="template" busy={busy} onSubmit={(form) => void upload("template", form)} />
           {groupedTemplates.length === 0 ? <div className="no-versions">No template versions uploaded yet.</div> : groupedTemplates.map(([label, versions]) => (
-            <div className="template-group" key={label}><div className="template-group-title"><h3>{humanize(label)}</h3>{versions.some((version) => version.is_current) && <><a className="text-link" href={`/document-sets/${slug}/current/templates/${label}`}><Download size={14} /> Current file</a><button className="button quiet small" disabled={busy} onClick={() => void downloadManual(label)} title="Highlighted placeholders and conditional sections, using the current questionnaire"><Download size={14} /> Manual template</button></>}</div><VersionList kind="template" slug={slug} versions={versions} busy={busy} onPublish={publish} /></div>
+            <div className="template-group" key={label}><div className="template-group-title"><h3>{humanize(label)}</h3>{versions.some((version) => version.is_current) && <><a className="text-link" href={`/document-sets/${slug}/current/templates/${encodeURIComponent(label)}`}><Download size={14} /> Current file</a><button className="button quiet small" disabled={busy} onClick={() => void downloadManual(label)} title="Highlighted placeholders and conditional sections, using the current questionnaire"><Download size={14} /> Manual template</button></>}<button className="button danger small" disabled={busy} onClick={() => void deleteTemplate(label)}><Trash2 size={14} /> Delete template</button></div><VersionList kind="template" slug={slug} versions={versions} busy={busy} onPublish={publish} /></div>
           ))}
         </div>
       </section>

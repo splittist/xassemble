@@ -371,6 +371,12 @@ def create_app(
             "template_variables": sorted(variables),
         }
 
+    @app.delete("/document-sets/{slug}/templates/{label}", status_code=204)
+    def delete_template(slug: str, label: str) -> None:
+        document_set = _document_set(database, slug)
+        if not database.delete_template(document_set["id"], label):
+            raise HTTPException(404, "Template not found")
+
     @app.post("/document-sets/{slug}/questionnaire-versions/{version_id}/publish")
     def publish_questionnaire(slug: str, version_id: int) -> dict[str, object]:
         document_set = _document_set(database, slug)
